@@ -15,8 +15,7 @@
       <div class="brand">
         <div class="brand-name">高清矿泉水</div>
         <div class="brand-tag">个人工作台</div>
-        <span id="cloud-status" class="cloud-status" onclick="showAuth()" title="点击登录 / 同步"></span>
-        <a id="logout-btn" class="logout-link hidden" onclick="authLogout()">退出</a>
+        <span class="cloud-status on">本地保存</span>
       </div>
       <nav class="nav">
         <a href="#home" class="nav-item active" data-page="home">
@@ -335,23 +334,8 @@
     </div>
   </div>
 
-  <div id="auth-overlay" class="auth-overlay hidden">
-    <div class="auth-box">
-      <h2>高清矿泉水 · 工作台</h2>
-      <p class="auth-sub">登录后数据云端同步，手机电脑互通</p>
-      <div class="form-group"><label>邮箱</label><input type="email" id="auth-email" placeholder="you@example.com"></div>
-      <div class="form-group"><label>密码</label><input type="password" id="auth-password" placeholder="至少 6 位"></div>
-      <p id="auth-error" class="auth-error"></p>
-      <div class="auth-actions">
-        <button class="btn-primary" onclick="authLogin()">登录</button>
-        <button class="btn-small" onclick="authSignup()">注册</button>
-        <button class="btn-small" onclick="hideAuth()">暂不登录</button>
-      </div>
-    </div>
-  </div>
+  <!-- 登录层已移除：工作台纯本地运行，数据存浏览器 localStorage -->
 
-  <script src="config.js?v=3"></script>
-  <script src="vendor/supabase.min.js?v=3"></script>
   <script src="app.js?v=3"></script>
 </body>
 </html>

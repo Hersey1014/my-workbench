@@ -15,12 +15,12 @@
 ## 技术栈
 
 - 纯静态 `HTML / CSS / JS`，双击 `index.html` 即可本地打开
-- [Supabase](https://supabase.com) 做云端同步（可选，默认内置演示配置）
+- 数据保存在浏览器 `localStorage`，无需后端、账号或联网
 - [DeepSeek](https://platform.deepseek.com) API 提供 AI 能力（key 仅存浏览器本地，不经过任何服务器）
 
 ## 本地运行
 
-直接双击 `index.html` 即可。AI 功能首次使用时在弹窗中填入 DeepSeek API key，仅保存在你自己的浏览器里。
+直接双击 `index.html` 即可，所有数据存在本机浏览器。AI 功能首次使用时在弹窗中填入 DeepSeek API key，仅保存在你自己的浏览器里。
 
 ## 部署到 GitHub Pages
 
@@ -35,23 +35,9 @@
 ├── index.html
 ├── styles.css
 ├── app.js
-├── config.js           # Supabase 配置（演示用，自用请替换）
-├── vendor/
-│   └── supabase.min.js  # 本地自托管，避免 CDN 被墙
-├── .gitignore
 └── README.md
 ```
 
 ## 说明
 
-仓库内置的 Supabase `anon key` 已随代码公开，仅供演示。正式自用请在 `config.js` 中替换为你的 Supabase 项目 key，并在 Supabase 建表：
-
-```sql
-create table app_state (
-  user_id uuid primary key,
-  data jsonb not null default '{}'::jsonb,
-  updated_at timestamptz not null default now()
-);
-```
-
-并配置 RLS 策略（建议限制为仅本人可读写）。
+数据完全保存在你自己的浏览器（localStorage），换设备不会自动同步，需要时请手动迁移。AI 功能首次使用时在弹窗中填入 DeepSeek API key，仅保存在本机浏览器，不经过任何中间服务器。

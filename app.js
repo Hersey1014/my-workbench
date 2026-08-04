@@ -55,32 +55,14 @@ let selectedDate = null;
 let tempInspImage = null;
 let tempCurrentCover = null;
 let tempEditCover = null;
-let supabase = null;
-let currentUser = null;
-let cloudEnabled = false;
-let saveTimer = null;
+// 纯本地模式：数据存浏览器 localStorage，无云端依赖
 
 function init() {
   bindEvents();
   updateGreeting();
-  // 本地优先：先渲染，保证页面永远可用，不会被云端脚本/网络拖死
   loadData();
   renderAll();
   hideBootFallback();
-  const cfg = window.APP_CONFIG || {};
-  if (cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY && window.supabase) {
-    try {
-      supabase = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
-      cloudEnabled = true;
-      checkSession().catch(e => { console.warn('云端检查失败，保持本地模式', e); updateCloudStatus(); });
-    } catch (e) {
-      console.warn('Supabase 初始化失败，保持本地模式', e);
-      cloudEnabled = false;
-      updateCloudStatus();
-    }
-  } else {
-    updateCloudStatus();
-  }
 }
 
 function renderAll() {
@@ -117,99 +99,9 @@ function saveData() {
   try {
     localStorage.setItem('hdksWater-workspace', JSON.stringify(data));
   } catch (e) {}
-  if (cloudEnabled && currentUser) {
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(pushCloud, 600);
-  }
 }
 
-async function pushCloud() {
-  const { error } = await supabase.from('app_state').upsert({ user_id: currentUser.id, data });
-  if (error) { console.warn('云端保存失败', error); updateCloudStatus(true); }
-}
-
-async function checkSession() {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session) {
-    currentUser = session.user;
-    await loadCloud();
-    renderAll();
-    hideAuth();
-  } else {
-    showAuth();
-  }
-  updateCloudStatus();
-}
-
-async function loadCloud() {
-  try {
-    const { data: row, error } = await supabase.from('app_state').select('data').eq('user_id', currentUser.id).maybeSingle();
-    if (row && row.data) {
-      data = Object.assign(JSON.parse(JSON.stringify(DEFAULT_DATA)), row.data);
-      data.calendarEvents = row.data.calendarEvents || {};
-      saveData();
-    } else {
-      pushCloud();
-    }
-  } catch (e) {
-    console.warn('云端读取失败，回退本地', e);
-    loadData();
-  }
-}
-
-function showAuth() { document.getElementById('auth-overlay').classList.remove('hidden'); }
-function hideAuth() { document.getElementById('auth-overlay').classList.add('hidden'); }
-function showAuthError(msg) { document.getElementById('auth-error').textContent = msg || ''; }
-
-async function authLogin() {
-  showAuthError('');
-  const email = document.getElementById('auth-email').value.trim();
-  const pw = document.getElementById('auth-password').value;
-  if (!email || !pw) { showAuthError('请填写邮箱和密码'); return; }
-  const { error } = await supabase.auth.signInWithPassword({ email, password: pw });
-  if (error) { showAuthError(error.message); return; }
-  const { data: { session } } = await supabase.auth.getSession();
-  currentUser = session.user;
-  await loadCloud();
-  renderAll();
-  hideAuth();
-  updateCloudStatus();
-}
-
-async function authSignup() {
-  showAuthError('');
-  const email = document.getElementById('auth-email').value.trim();
-  const pw = document.getElementById('auth-password').value;
-  if (!email || !pw) { showAuthError('请填写邮箱和密码'); return; }
-  const { error } = await supabase.auth.signUp({ email, password: pw });
-  if (error) { showAuthError(error.message); return; }
-  alert('注册成功！如开启邮箱验证，请先去邮箱点确认链接，再回来登录。\n登录后数据即开始云端同步。');
-}
-
-async function authLogout() {
-  await supabase.auth.signOut();
-  currentUser = null;
-  updateCloudStatus();
-  showAuth();
-}
-
-function updateCloudStatus(failed) {
-  const el = document.getElementById('cloud-status');
-  const lb = document.getElementById('logout-btn');
-  if (currentUser) {
-    el.textContent = failed ? '同步失败' : '云端已同步';
-    el.classList.add('on');
-    lb.classList.remove('hidden');
-  } else if (cloudEnabled) {
-    el.textContent = '未登录 · 点此同步';
-    el.classList.remove('on');
-    lb.classList.add('hidden');
-  } else {
-    el.textContent = '本地模式';
-    el.classList.remove('on');
-    lb.classList.add('hidden');
-  }
-}
+/* 云端同步（Supabase）已移除：数据仅保存在浏览器 localStorage，双击 index.html 即可使用，无需登录或网络。 */
 
 function hideBootFallback() {
   const el = document.getElementById('boot-fallback');
