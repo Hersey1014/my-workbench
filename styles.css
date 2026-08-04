@@ -210,6 +210,9 @@ html, body {
 .phrase-del { border: none; background: transparent; color: var(--c2); cursor: pointer; font-size: 18px; line-height: 1; padding: 0 4px; }
 .phrase-del:hover { color: var(--c1); }
 .phrase-empty { color: var(--text2); font-size: 12px; opacity: 0.75; list-style: none; padding: 4px 0; }
+.dictation-tools { display: flex; align-items: center; gap: 12px; margin: 12px 0; flex-wrap: wrap; }
+.dictation-tools input[type="range"] { width: 110px; accent-color: var(--c1); }
+.dictation-text { padding: 14px 16px; background: var(--c3); border-radius: 8px; font-size: 14px; line-height: 1.8; color: var(--c1); white-space: pre-wrap; margin-bottom: 12px; }
 
 /* 教资 / 口译 通用 */
 .timeline { list-style: none; }
@@ -261,6 +264,29 @@ html, body {
 .modal-body { padding: 20px; }
 .cal-event { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
 .cal-event .done { text-decoration: line-through; color: var(--text2); opacity: 0.6; }
+
+/* AI 状态入口 */
+.ai-status { display: inline-block; font-size: 11px; color: var(--c2); margin-top: 10px; cursor: pointer; padding: 3px 10px; border: 1px solid rgba(235,223,192,0.4); border-radius: 10px; transition: all 0.2s; }
+.ai-status:hover { background: rgba(255,255,255,0.1); }
+.ai-status.on { color: var(--c4); border-color: var(--c4); }
+
+/* 日程侧栏 */
+.agenda-list { display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto; margin-bottom: 6px; }
+.agenda-card .form-group { margin-bottom: 0; }
+
+/* 政报精读 */
+.gov-block { margin: 12px 0; }
+.gov-block h4 { font-size: 12px; color: var(--text2); margin: 10px 0 4px; }
+.gov-cn { font-size: 13px; line-height: 1.9; color: var(--text); background: var(--bg); padding: 12px; border-radius: 8px; margin-bottom: 8px; }
+.gov-en { font-size: 13px; line-height: 1.9; color: var(--c1); background: var(--c3); padding: 12px; border-radius: 8px; }
+.term-list { list-style: none; padding: 0; }
+.term-list li { font-size: 12px; padding: 6px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 6px; color: var(--text2); }
+.term-list b { color: var(--c1); }
+
+/* 新闻 */
+.news-title { font-size: 13px; color: var(--c1); margin: 6px 0 4px; }
+.news-actions { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+.news-link { font-size: 12px; color: var(--c1); text-decoration: underline; }
 
 /* 表单 */
 .form-group { margin-bottom: 14px; }

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>高清矿泉水 · 工作台</title>
-  <link rel="stylesheet" href="styles.css?v=3">
+  <link rel="stylesheet" href="styles.css?v=4">
 </head>
 <body>
   <div id="boot-fallback" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--c3,#EBDFC0);color:#57361A;font-size:15px;text-align:center;padding:24px;z-index:999;">
@@ -16,6 +16,7 @@
         <div class="brand-name">高清矿泉水</div>
         <div class="brand-tag">个人工作台</div>
         <span class="cloud-status on">本地保存</span>
+        <span class="ai-status" id="ai-status" onclick="openAIConfig()" title="点击配置 / 查看 DeepSeek">AI · 未配置</span>
       </div>
       <nav class="nav">
         <a href="#home" class="nav-item active" data-page="home">
@@ -85,7 +86,18 @@
           <div class="card calendar-card">
             <div class="card-header"><h2>日历</h2><span id="calendar-month"></span></div>
             <div id="calendar" class="calendar"></div>
-            <p class="hint">点击日期可直接添加待办，有圆点的日子代表有安排。</p>
+            <p class="hint">点击日期可在右侧查看 / 添加当天日程，有圆点的日子代表有安排。</p>
+          </div>
+
+          <div class="card agenda-card">
+            <div class="card-header"><h2 id="agenda-title">今日日程</h2></div>
+            <div id="agenda-list" class="agenda-list"></div>
+            <div class="form-group" style="margin-top:12px">
+              <div style="display:flex;gap:8px">
+                <input type="text" id="agenda-new" placeholder="添加这天要做的事" style="flex:1">
+                <button class="btn-primary" onclick="addAgendaEvent()">添加</button>
+              </div>
+            </div>
           </div>
 
           <div class="card">
@@ -106,9 +118,8 @@
               <a class="app-item" href="https://www.douyin.com" target="_blank"><div class="app-logo">抖音</div><span>抖音</span></a>
               <a class="app-item" href="https://mp.weixin.qq.com" target="_blank"><div class="app-logo">微信</div><span>公众平台</span></a>
               <a class="app-item" href="#" onclick="openObsidian()"><div class="app-logo">Obs</div><span>Obsidian</span></a>
-              <a class="app-item" href="#" onclick="openPocketWriter()"><div class="app-logo">口袋</div><span>口袋写作</span></a>
             </div>
-            <p class="hint">Obsidian 与口袋写作为本地软件，点击后按提示操作。</p>
+            <p class="hint">Obsidian 为本地软件，点击后按提示操作。</p>
           </div>
           <div class="card inspiration-card">
             <div class="card-header"><h2>灵感整理</h2></div>
@@ -137,13 +148,24 @@
         </div>
         <div id="en-listen" class="en-panel active">
           <div class="card">
-            <div class="card-header"><h2>今日 Dictation</h2><button class="btn-small" onclick="loadDictation()">换一篇</button></div>
+            <div class="card-header"><h2>今日 Dictation</h2><button class="btn-small" id="gen-dictation-btn" onclick="generateDictation()">AI 推送今日材料</button></div>
             <p id="dictation-source" class="en-source"></p>
-            <div class="en-resource">
-              <h3>每日练习（AI 接入后）</h3>
-              <p class="hint">接入 AI 后，每天自动推送一篇 Dictation 材料，含<b>音频播放</b>、原文 PDF、逐句对照，做完自动判分并汇总生词。</p>
+            <div class="dictation-tools">
+              <button class="btn-small" id="dict-play-btn" onclick="playDictation()" disabled>▶ 朗读</button>
+              <span class="hint" style="margin:0">语速</span>
+              <input type="range" id="dict-rate" min="0.6" max="1.1" step="0.1" value="0.9">
+              <button class="btn-small" id="dict-text-btn" onclick="toggleDictationText()">显示原文</button>
             </div>
-            <textarea class="en-answer" placeholder="听写答案写在这里..."></textarea>
+            <div id="dictation-text" class="dictation-text hidden"></div>
+            <textarea class="en-answer" id="dictation-answer" placeholder="听写答案写在这里（按句分段更易判分）..."></textarea>
+            <div class="insp-tools">
+              <button class="btn-primary" id="dict-grade-btn" onclick="gradeDictation()">判分</button>
+            </div>
+            <div id="dictation-result" class="feedback hidden"></div>
+            <div class="phrase-book">
+              <div class="card-header"><h3>我的生词本</h3></div>
+              <ul id="word-list" class="phrase-list"></ul>
+            </div>
           </div>
         </div>
         <div id="en-speak" class="en-panel">
@@ -153,7 +175,7 @@
             <div class="en-resource">
               <h3>推荐材料</h3>
               <ul><li>走遍美国 Family Album USA</li><li>EnglishPod（日常对话）</li><li>VOA Special English（慢速）</li></ul>
-              <p class="hint" style="margin-top:10px">AI 接入后：每天推送一段跟读视频 + 字幕 + 语音评测，自动记录发音问题。</p>
+              <p class="hint" style="margin-top:10px">（规划中）后续可接入：每天推送跟读材料 + 字幕 + 语音评测，自动记录发音问题。</p>
             </div>
           </div>
         </div>
@@ -162,7 +184,7 @@
             <div class="card-header"><h2>十日精读</h2><button class="btn-small" onclick="loadArticle()">换一篇</button></div>
             <p id="read-article" class="en-source"></p>
             <div class="progress-bar"><div id="read-progress" class="progress-fill" style="width:10%"></div></div>
-            <p class="hint">建议：每天 1-2 段，记录生词 + 长难句。AI 接入后可将外刊 PDF 直接嵌入阅读，长难句自动解析。</p>
+            <p class="hint">建议：每天 1-2 段，记录生词 + 长难句。（外刊 PDF 嵌入与长难句自动解析为规划中功能）</p>
           </div>
         </div>
         <div id="en-write" class="en-panel">
@@ -221,7 +243,7 @@
               <span class="rec-tag">山香 教育知识与能力 速记口诀</span>
               <span class="rec-tag">历年真题（近 3 年必刷）</span>
             </div>
-            <p class="hint">AI 接入后：可按你的进度生成每周背诵计划与刷题题单。</p>
+            <p class="hint">（规划中）后续可接入：按你的进度生成每周背诵计划与刷题题单。</p>
           </div>
         </div>
       </section>
@@ -263,10 +285,19 @@
             </div>
           </div>
           <div class="card">
-            <div class="card-header"><h2>每十日一篇</h2></div>
-            <p class="hint">“政府工作报告”是口译高频素材。AI 接入后，<b>每 10 天自动推送一篇带生词注释、术语表和跟练音频的政报段落</b>，配合你的精读节奏。</p>
-            <div class="progress-bar" style="margin-top:14px"><div class="progress-fill" style="width:30%"></div></div>
-            <p class="hint">当前第 3 / 10 天 · 待 AI 接入后自动运转</p>
+            <div class="card-header"><h2>政报精读 · 每十日一篇</h2><button class="btn-small" id="gov-play-btn" onclick="playGovReport()">▶ 朗读英文</button></div>
+            <p class="hint" id="gov-period"></p>
+            <div class="gov-block">
+              <h4>中文</h4>
+              <p id="gov-cn" class="gov-cn"></p>
+              <h4>English</h4>
+              <p id="gov-en" class="gov-en"></p>
+            </div>
+            <div class="gov-terms">
+              <h4>术语表 / 重点词</h4>
+              <ul id="gov-terms" class="term-list"></ul>
+            </div>
+            <p class="hint">素材围绕《政府工作报告》高频考点，双语精读 + 跟练。原文参考：<a href="http://www.china.org.cn/chinese/node_7245066.htm" target="_blank">中国网·双语政府工作报告</a></p>
           </div>
         </div>
       </section>
@@ -277,9 +308,8 @@
         <div class="grid-2">
           <div class="card">
             <div class="card-header"><h2>今日要闻</h2></div>
-            <div id="news-list" class="news-list">
-              <div class="news-item"><span class="news-tag">时政</span><p>每日新闻模块将接入新闻源，自动整理 5 条重点新闻 + 申论可用金句。</p></div>
-            </div>
+            <div id="news-list" class="news-list"></div>
+            <p class="hint" style="margin-top:12px">内容抓取自人民网观点/评论，构建时嵌入本页；因纯静态页无法运行时跨域抓取，重新部署即可更新最新一期。也可点「原文」前往人民网。</p>
           </div>
           <div class="card">
             <div class="card-header"><h2>申论素材本</h2></div>
@@ -336,6 +366,6 @@
 
   <!-- 登录层已移除：工作台纯本地运行，数据存浏览器 localStorage -->
 
-  <script src="app.js?v=3"></script>
+  <script src="app.js?v=4"></script>
 </body>
 </html>

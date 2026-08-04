@@ -45,7 +45,9 @@ const DEFAULT_DATA = {
   quickMemos: [
     { text: '这是一个示例备忘', time: Date.now() }
   ],
-  reviewScores: [6, 7, 5, 8, 6, 7, 8]
+  reviewScores: [6, 7, 5, 8, 6, 7, 8],
+  vocab: [],
+  currentDictation: null
 };
 
 let data = JSON.parse(JSON.stringify(DEFAULT_DATA));
@@ -62,11 +64,13 @@ function init() {
   updateGreeting();
   loadData();
   renderAll();
+  updateAIStatus();
   hideBootFallback();
 }
 
 function renderAll() {
   renderCalendar();
+  renderAgenda();
   renderTasks();
   renderCountdowns();
   renderCurrentBook();
@@ -76,6 +80,9 @@ function renderAll() {
   renderQuickMemos();
   renderReview();
   renderPhrases();
+  renderVocab();
+  renderGovReport();
+  renderNews();
   switchPage(location.hash.replace('#', '') || 'home');
   initEnglishContent();
 }
@@ -202,7 +209,7 @@ function renderCalendar() {
     const hasEvent = data.calendarEvents[key] && data.calendarEvents[key].length > 0;
     el.className = 'calendar-day' + (key === todayKey ? ' today' : '') + (hasEvent ? ' has-event' : '');
     el.innerHTML = `<span>${d}</span>` + (hasEvent ? '<span class="dot"></span>' : '');
-    el.onclick = () => openCalendarDay(key, d);
+    el.onclick = () => selectCalendarDay(key);
     calendar.appendChild(el);
   }
 }
@@ -214,9 +221,16 @@ function fmtDate(d) {
   return `${y}-${m}-${day}`;
 }
 
-function openCalendarDay(key, day) {
+function selectCalendarDay(key) {
   selectedDate = key;
+  renderAgenda();
+}
+
+function renderAgenda() {
+  const key = selectedDate || fmtDate(new Date());
+  const parts = key.split('-');
   const events = data.calendarEvents[key] || [];
+  document.getElementById('agenda-title').textContent = `${parseInt(parts[1])}月${parseInt(parts[2])}日 日程`;
   const listHTML = events.length
     ? events.map(e => `
         <div class="cal-event">
@@ -224,42 +238,34 @@ function openCalendarDay(key, day) {
           <span class="${e.done ? 'done' : ''}">${escapeHtml(e.text)}</span>
           <span class="task-del" onclick="deleteCalEvent('${key}', ${e.id})">删</span>
         </div>`).join('')
-    : '<p class="hint">这天还没有待办</p>';
-
-  openModal(`待办 · ${day}日`, `
-    <div id="cal-event-list">${listHTML}</div>
-    <div class="form-group" style="margin-top:14px">
-      <label>添加待办</label>
-      <div style="display:flex;gap:8px">
-        <input type="text" id="cal-new-event" placeholder="输入这天要做的事" style="flex:1">
-        <button class="btn-primary" onclick="addCalEvent('${key}')">添加</button>
-      </div>
-    </div>
-  `);
+    : '<p class="hint">这天还没有待办，右侧输入框里添加一条吧。</p>';
+  document.getElementById('agenda-list').innerHTML = listHTML;
 }
 
-function addCalEvent(key) {
-  const input = document.getElementById('cal-new-event');
+function addAgendaEvent() {
+  const input = document.getElementById('agenda-new');
+  const key = selectedDate || fmtDate(new Date());
   const text = input.value.trim();
   if (!text) return;
   if (!data.calendarEvents[key]) data.calendarEvents[key] = [];
   data.calendarEvents[key].push({ id: Date.now(), text, done: false });
   saveData();
-  openCalendarDay(key, parseInt(key.slice(8)));
+  input.value = '';
   renderCalendar();
+  renderAgenda();
 }
 
 function toggleCalEvent(key, id) {
   const e = (data.calendarEvents[key] || []).find(x => x.id === id);
-  if (e) { e.done = !e.done; saveData(); openCalendarDay(key, parseInt(key.slice(8))); renderCalendar(); }
+  if (e) { e.done = !e.done; saveData(); renderCalendar(); renderAgenda(); }
 }
 
 function deleteCalEvent(key, id) {
   data.calendarEvents[key] = (data.calendarEvents[key] || []).filter(x => x.id !== id);
   if (data.calendarEvents[key].length === 0) delete data.calendarEvents[key];
   saveData();
-  openCalendarDay(key, parseInt(key.slice(8)));
   renderCalendar();
+  renderAgenda();
 }
 
 /* ---------- 任务 ---------- */
@@ -446,10 +452,6 @@ function openObsidian() {
   setTimeout(() => alert('已尝试打开 Obsidian。\n如未响应，请确认已安装，或在 Obsidian 中手动打开 vault。'), 500);
 }
 
-function openPocketWriter() {
-  alert('口袋写作为本地软件，网页无法直接启动。\n建议在桌面创建快捷方式，或固定到任务栏。');
-}
-
 /* ---------- 灵感 ---------- */
 function previewInspImage(e) {
   const file = e.target.files[0];
@@ -517,6 +519,101 @@ const EN_CONTENT = {
   reading: ['经济学人：Why the world is becoming more allergic', '经济学人：The boom in private markets', '卫报：The art of doing nothing'],
   writing: ['Social media has changed the way people communicate. Do you agree?', 'Should university education be free for all students?', 'Write about a tradition in your family that you value.']
 };
+
+/* ---------- 政报精读（CATTI 三口） ---------- */
+const GOV_REPORT = [
+  { theme: '经济',
+    cn: '坚持稳中求进工作总基调，完整、准确、全面贯彻新发展理念，加快构建新发展格局，着力推动高质量发展。更好统筹发展和安全，推动经济实现质的有效提升和量的合理增长。',
+    en: 'We should adhere to the general principle of pursuing progress while ensuring stability, fully and faithfully apply the new development philosophy on all fronts, accelerate our efforts to foster a new development pattern, and strive to promote high-quality development. We should better coordinate development and security, and pursue better-quality and appropriately greater economic growth.',
+    terms: [['高质量发展','high-quality development'],['新发展格局','new development pattern'],['稳中求进','pursuing progress while ensuring stability'],['新发展理念','new development philosophy']] },
+  { theme: '民生',
+    cn: '实施就业优先战略，强化就业优先政策，健全就业公共服务体系。突出做好高校毕业生、农民工、退役军人等重点群体就业工作，加强困难群体就业兜底帮扶。',
+    en: 'We will implement the employment-first strategy, strengthen employment-first policies, and improve the public employment service system. We will give priority to creating jobs for key groups such as college graduates, rural migrant workers, and ex-service members, and provide better support for groups facing difficulties in finding jobs.',
+    terms: [['就业优先','employment first'],['高校毕业生','college graduates'],['农民工','rural migrant workers'],['兜底帮扶','basic support and assistance']] },
+  { theme: '改革',
+    cn: '坚持社会主义市场经济改革方向，坚持“两个毫不动摇”，充分发挥市场在资源配置中的决定性作用，更好发挥政府作用，营造市场化、法治化、国际化一流营商环境。',
+    en: 'We will uphold the direction of reform toward a socialist market economy and the "two unwaverings." We will give full play to the decisive role of the market in allocating resources, better leverage the role of the government, and foster a world-class business environment that is market-oriented, law-based, and internationalized.',
+    terms: [['两个毫不动摇','the Two Unswervings'],['营商环境','business environment'],['决定性作用','decisive role']] },
+  { theme: '生态',
+    cn: '推动经济社会发展绿色转型，协同推进降碳、减污、扩绿、增长。深入推进环境污染防治，提升生态系统多样性、稳定性、持续性，积极稳妥推进碳达峰碳中和。',
+    en: 'We will pursue a green transition in economic and social development and take coordinated steps to cut carbon emissions, reduce pollution, expand green development, and pursue economic growth. We will deepen the prevention and control of environmental pollution, enhance the diversity, stability, and sustainability of our ecosystems, and steadily advance the peaking of carbon dioxide emissions and carbon neutrality.',
+    terms: [['绿色转型','green transition'],['碳达峰碳中和','carbon peaking and carbon neutrality'],['降碳','cut carbon emissions'],['扩绿','expand green development']] },
+  { theme: '科技',
+    cn: '坚持创新在我国现代化建设全局中的核心地位，健全新型举国体制，强化国家战略科技力量。加快实现高水平科技自立自强，打赢关键核心技术攻坚战。',
+    en: 'We will maintain innovation as the driving force behind China’s modernization, improve the new system for mobilizing resources nationwide, and strengthen China’s strategic scientific and technological strength. We will accelerate efforts to achieve greater self-reliance and strength in science and technology, and win the battle of key core technologies.',
+    terms: [['科技自立自强','self-reliance and strength in science and technology'],['新型举国体制','new system for mobilizing resources nationwide'],['关键核心技术','key core technologies']] },
+  { theme: '乡村振兴',
+    cn: '全面推进乡村振兴，坚持农业农村优先发展，巩固拓展脱贫攻坚成果，加快建设农业强国。全方位夯实粮食安全根基，牢牢守住十八亿亩耕地红线。',
+    en: 'We will comprehensively advance rural revitalization, give priority to agricultural and rural development, consolidate and expand our achievements in poverty alleviation, and accelerate the building of a strong agricultural country. We will reinforce the foundations of food security on all fronts and firmly hold the line of 1.8 billion mu of cultivated land.',
+    terms: [['乡村振兴','rural revitalization'],['脱贫攻坚','poverty alleviation'],['粮食安全','food security'],['耕地红线','red line for cultivated land']] },
+  { theme: '开放',
+    cn: '推进高水平对外开放，稳步扩大规则、规制、管理、标准等制度型开放。推动共建“一带一路”高质量发展，维护多元稳定的国际经济格局和经贸关系。',
+    en: 'We will promote high-level opening up, and steadily expand institutional opening up with regard to rules, regulations, management, and standards. We will promote the high-quality development of the Belt and Road Initiative, and safeguard a diversified and stable international economic landscape and foreign trade relations.',
+    terms: [['制度型开放','institutional opening up'],['一带一路','the Belt and Road Initiative'],['高水平对外开放','high-level opening up']] },
+  { theme: '教育',
+    cn: '加快建设教育强国、科技强国、人才强国，坚持教育优先发展、科技自立自强、人才引领驱动。办好人民满意的教育，加快建设高质量教育体系。',
+    en: 'We will accelerate the building of a strong educational system, a strong science and technology sector, and a strong human resource pool. We will continue to give high priority to the development of education, build self-reliance and strength in science and technology, and leverage the role of talent in driving development. We will develop education that meets the people’s expectations, and move faster to build a high-quality educational system.',
+    terms: [['教育强国','a strong educational system'],['人才强国','a strong human resource pool'],['高质量教育体系','high-quality educational system']] }
+];
+
+/* ---------- 每日新闻（人民网观点/评论，构建时嵌入） ---------- */
+const NEWS_DATA = [
+  { tag: '时政', title: '以法治力度保障民生温度', summary: '检察机关贯通“检护民生”，聚焦劳动者、妇女、儿童、老人等重点群体权益，以一个个案件小切口做实社会治理大文章。', url: 'https://politics.people.com.cn/n1/2026/0803/c461001-40772532.html' },
+  { tag: '社会', title: '一餐一饭照见老有所养', summary: '北京、浙江、河南多地探索养老助餐服务网络，把尊老敬老融入烟火日常，让乡村山区老人吃上热乎饭。', url: 'https://society.people.com.cn/n1/2026/0803/c1008-40772494.html' },
+  { tag: '人民论坛', title: '以“思维革新”引领“发展向新”', summary: '从节能家电换新到垃圾资源化，理念革新带来发展思路创新；打破思维定式，换个角度看劣势与机遇。', url: 'https://data.people.com.cn/rmrb/20260803/pingLun/aebbf9cfaf644575a202191ee749997d' },
+  { tag: '民生', title: '呵护乡村老人“舌尖上的幸福”', summary: '“十五五”规划提出优化养老服务供给，北京延庆、浙江江山、河南卢氏以各具特色方式升级农村养老助餐。', url: 'https://paper.people.com.cn/rmrb/pc/content/202608/03/content_30172761.html' },
+  { tag: '科技', title: '砥砺初心使命 书写时代答卷（社论）', summary: '国产开源大模型全球累计下载量突破100亿次，印证中国人工智能在全球市场获得的广泛认可与独特竞争优势。', url: 'https://www.people.com.cn/' }
+];
+
+let currentGovIndex = 0;
+
+function renderGovReport() {
+  const DAY = 86400000;
+  const epoch = Date.UTC(2026, 0, 1);
+  const rawIndex = Math.floor((Date.now() - epoch) / (10 * DAY));
+  currentGovIndex = rawIndex % GOV_REPORT.length;
+  const g = GOV_REPORT[currentGovIndex];
+  document.getElementById('gov-cn').textContent = g.cn;
+  document.getElementById('gov-en').textContent = g.en;
+  document.getElementById('gov-terms').innerHTML = g.terms.map(t => `<li><b>${escapeHtml(t[0])}</b> — ${escapeHtml(t[1])}</li>`).join('');
+  const start = new Date(epoch + rawIndex * 10 * DAY);
+  const end = new Date(epoch + (rawIndex + 1) * 10 * DAY);
+  document.getElementById('gov-period').textContent = `本期（第 ${currentGovIndex + 1}/${GOV_REPORT.length} 篇）：${start.getMonth() + 1}月${start.getDate()}日 – ${end.getMonth() + 1}月${end.getDate()}日`;
+}
+
+function playGovReport() {
+  const g = GOV_REPORT[currentGovIndex];
+  if (g) speakText(g.en, 'en-US', 0.85);
+}
+
+function renderNews() {
+  const list = document.getElementById('news-list');
+  if (!list) return;
+  list.innerHTML = NEWS_DATA.map((n, i) => `
+    <div class="news-item">
+      <span class="news-tag">${escapeHtml(n.tag)}</span>
+      <h4 class="news-title">${escapeHtml(n.title)}</h4>
+      <p>${escapeHtml(n.summary)}</p>
+      <div class="news-actions">
+        <button class="btn-small" onclick="readNews(${i})">▶ 朗读</button>
+        <a class="news-link" href="${n.url}" target="_blank">阅读原文 →</a>
+      </div>
+    </div>`).join('');
+}
+
+function readNews(i) {
+  const n = NEWS_DATA[i];
+  if (n) speakText(n.title + '。' + n.summary, 'zh-CN', 1);
+}
+
+function speakText(text, lang, rate) {
+  if (!('speechSynthesis' in window)) { alert('当前浏览器不支持语音朗读，可点“阅读原文”对照。'); return; }
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = lang || 'zh-CN';
+  u.rate = rate || 1;
+  window.speechSynthesis.speak(u);
+}
 
 function initEnglishContent() {
   document.getElementById('dictation-source').textContent = EN_CONTENT.dictation[0];
@@ -795,11 +892,29 @@ function promptAIKey() {
   });
 }
 
+function updateAIStatus() {
+  const el = document.getElementById('ai-status');
+  if (!el) return;
+  if (getAIKey()) { el.textContent = 'AI · 已连接'; el.classList.add('on'); }
+  else { el.textContent = 'AI · 未配置'; el.classList.remove('on'); }
+}
+
+function openAIConfig() {
+  openModal('配置 AI（DeepSeek）', `
+    <p style="margin:0 0 10px;color:var(--c2);font-size:13px;line-height:1.6;">把你的 DeepSeek API Key 粘贴到这里。Key 只存在你本机浏览器，页面直接调用 DeepSeek，不经过任何中间服务器。<br>获取：platform.deepseek.com → API Keys → 创建密钥。留空表示不修改。</p>
+    <div class="form-group"><input type="password" id="aikey-input" placeholder="sk-..." value="${getAIKey()}" style="width:100%"></div>
+    <div class="form-actions">
+      <button class="btn-small" onclick="closeModal()">取消</button>
+      <button class="btn-primary" onclick="submitAIKey()">保存</button>
+    </div>`);
+}
+
 async function submitAIKey() {
   const key = document.getElementById('aikey-input').value.trim();
-  if (!key) { alert('请填写 Key'); return; }
+  if (!key) { closeModal(); return; }
   setAIKey(key);
   closeModal();
+  updateAIStatus();
   if (window.__aiKeyResolve) { window.__aiKeyResolve(true); window.__aiKeyResolve = null; }
 }
 
@@ -857,6 +972,94 @@ function renderPhrases() {
 function deletePhrase(i) {
   data.phrases.splice(i, 1);
   saveData(); renderPhrases();
+}
+
+/* ---------- Dictation ---------- */
+async function generateDictation() {
+  const sys = '你是英语听写(Dictation)材料生成器，面向备考英语专业四级(TEM-4)的大学生。生成 80-120 词、难度贴近专四听力的短文(日常/校园/社会话题，用词不过于生僻)。句子结构清晰，便于逐句听写。仅输出 JSON：{"title":"材料标题","text":"英文正文"}，不要多余文字、不要解释、不要代码块标记。';
+  const user = '请生成今天的 Dictation 材料。';
+  setBtnLoading('gen-dictation-btn', true);
+  try {
+    const raw = await callAI(sys, user, 0.8);
+    const json = extractJson(raw);
+    const title = json.title || '今日 Dictation';
+    const text = (json.text || raw).trim();
+    document.getElementById('dictation-source').textContent = title;
+    const dt = document.getElementById('dictation-text');
+    dt.dataset.text = text;
+    dt.textContent = text;
+    dt.classList.add('hidden');
+    document.getElementById('dict-play-btn').disabled = false;
+    document.getElementById('dictation-answer').value = '';
+    document.getElementById('dictation-result').classList.add('hidden');
+    document.getElementById('dict-text-btn').textContent = '显示原文';
+    data.currentDictation = { title, text, date: fmtDate(new Date()) };
+    saveData();
+  } catch (e) { alert(e.message); }
+  finally { setBtnLoading('gen-dictation-btn', false); }
+}
+
+function extractJson(s) {
+  try {
+    const m = s.match(/\{[\s\S]*\}/);
+    return m ? JSON.parse(m[0]) : {};
+  } catch (e) { return {}; }
+}
+
+function playDictation() {
+  const text = document.getElementById('dictation-text').dataset.text || '';
+  if (!text) return;
+  if (!('speechSynthesis' in window)) { alert('当前浏览器不支持语音朗读，可点"显示原文"对照。'); return; }
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'en-US';
+  u.rate = parseFloat(document.getElementById('dict-rate').value) || 0.9;
+  window.speechSynthesis.speak(u);
+}
+
+function toggleDictationText() {
+  const dt = document.getElementById('dictation-text');
+  const btn = document.getElementById('dict-text-btn');
+  if (dt.classList.contains('hidden')) { dt.classList.remove('hidden'); btn.textContent = '隐藏原文'; }
+  else { dt.classList.add('hidden'); btn.textContent = '显示原文'; }
+}
+
+function gradeDictation() {
+  const text = document.getElementById('dictation-text').dataset.text || '';
+  const answer = document.getElementById('dictation-answer').value.trim();
+  if (!text) { alert('先点"AI 推送今日材料"生成内容。'); return; }
+  if (!answer) { alert('先写点听写答案再判分。'); return; }
+  const norm = s => s.toLowerCase().replace(/[^a-z\s']/g, ' ').split(/\s+/).filter(Boolean);
+  const ref = norm(text);
+  const ansSet = new Set(norm(answer));
+  let hit = 0;
+  ref.forEach(w => { if (ansSet.has(w)) hit++; });
+  const score = ref.length ? Math.round(hit / ref.length * 100) : 0;
+  const missed = [...new Set(ref.filter(w => !ansSet.has(w)))];
+  missed.forEach(w => { if (!data.vocab.includes(w)) data.vocab.push(w); });
+  saveData(); renderVocab();
+  document.getElementById('dictation-result').innerHTML =
+    '<strong>判分结果</strong><br>准确率：<b>' + score + '%</b>（' + hit + '/' + ref.length + ' 词）<br>' +
+    (missed.length ? '未写对/缺失的词已加入生词本：' + escapeHtml(missed.join(', ')) : '全部命中，太棒了！');
+  document.getElementById('dictation-result').classList.remove('hidden');
+}
+
+function renderVocab() {
+  const ul = document.getElementById('word-list');
+  if (!ul) return;
+  ul.innerHTML = '';
+  if (!data.vocab.length) { ul.innerHTML = '<li class="phrase-empty">还没有生词，判分后自动收集。</li>'; return; }
+  data.vocab.forEach((w, i) => {
+    const li = document.createElement('li');
+    li.className = 'phrase-item';
+    li.innerHTML = `<span>${escapeHtml(w)}</span><button class="phrase-del" onclick="deleteVocab(${i})">×</button>`;
+    ul.appendChild(li);
+  });
+}
+
+function deleteVocab(i) {
+  data.vocab.splice(i, 1);
+  saveData(); renderVocab();
 }
 
 /* ---------- 复盘 ---------- */
