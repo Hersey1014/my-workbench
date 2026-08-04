@@ -1,0 +1,9 @@
+# 依赖（若将来引入构建工具）
+node_modules/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 本地参考：已弃用的 Node 后端方案
+old-backend/
